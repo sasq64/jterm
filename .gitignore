@@ -1,0 +1,11 @@
+.dub
+dub.selections.json
+trace.*
+docs.json
+__dummy.html
+*.o
+*.obj
+*.a
+*.lst
+*-library
+__test__*__

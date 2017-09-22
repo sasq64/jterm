@@ -1,0 +1,78 @@
+
+ANSIFIER
+
+[ ] Alternate Keypad Mode
+[x] Alternate Buffer
+    [x] Save and restore data
+[ ] Insert/replace mode
+[ ] Mouse mode
+    [x] Report as ansi
+    [x] Correct mapping to split pane
+[x] Ctrl-space
+[ ] Auto-repeat on/off
+[ ] Reverse video (whole screen)
+[ ] Bracketed paste
+[ ] DEL
+[ ] Real character set translation
+
+SCROLLBACK
+
+[ ] Simple scrollback
+    [x] Store scrollback in array
+    [ ] Render scrollback with text depending on scroll position
+[ ] Advanded scrollback
+
+EXTENSIONS
+[ ] iTerm images
+[ ] Sixel graphics
+[ ] ReGIS graphics
+
+TERMINAL
+
+[ ] Insert mode cursor
+[ ] Mouse mark text
+    [ ] Rectangle overlay rendering
+[x] Mouse resize splits
+[ ] Optimize split area usage
+[x] Font resize
+    [x] Cycle specific sizes
+[x] Shared font, change size on RenderChar
+[x] 'Zoom/Unzoom' Pane
+[x] Assure panes does not shrink below a treshold
+    [ ] Limit to 4x4 cells
+[ ] Add relative size function; changes weight of node and parent
+[x] Send ALT as modifier if it doesn't affect the key press otherwise
+[ ] Support Italic & Bold text
+[x] Clear with background color
+[x] Set theme to AnsiParser
+    [ ] Replace colors in text screen and refresh
+[ ] Console rendering
+    [x] Size console to split area
+    [ ] 'Clamp' borders of rendered text to get nice background
+[ ] Scrollbar
+[ ] Fallback font
+[x] Border for each terminal
+[x] Border should me 'minBorder', count wasted space
+[ ] Make sure alpha is 1.0 in screen
+
+CODE QUALITY
+
+[x] Remove font from termapp; Terminals can have different fonts
+[x] Do not update on closed session
+[x] Implement and test proper layout node resize
+[x] Break out keycode enums from Window
+[ ] Get rid of extra initial initialization
+
+
+V1 ISSUES
+
+[x] Alt buffer leaks current color
+    [ ] Resize fills with current attr, change BEFORE
+[ ] Sync resized buffers
+[x] Tab completion table not rendering bottom line
+[x] zoom=2 on Retina with custom font
+[ ] Cycle font sizes
+    [ ] From current
+    [ ] 'Good' sizes
+[ ] Limit scroll position
+

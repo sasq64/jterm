@@ -1,0 +1,32 @@
+name "jterm"
+description "Terminal emulator"
+authors "Jonas Minnberg"
+copyright "Copyright © 2017, Jonas Minnberg"
+license "proprietary"
+targetType "executable"
+dependency "ansifier" path="../ansifier"
+dependency "graphics" path="../graphics"
+dependency "lua" path="../lua"
+dependency "imageformats" version="~>6.1.1"
+
+buildOptions "alwaysStackFrame"
+dflags "-defaultlib=:libphobos2-ldc.a,:libdruntime-ldc.a" platform="linux"
+
+libs "util" platform="linux"
+
+mainSourceFile "source/app.d"
+
+configuration "default" {
+versions "threaded" "StdLoggerDisableTrace"
+
+}
+
+configuration "trace" {
+    versions "trace" "StdLoggerDisableTrace"
+    lflags "-L../graphics"
+    libs "minitrace"
+}
+
+configuration "raspberry" {
+    versions "threaded"
+}

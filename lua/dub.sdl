@@ -1,0 +1,8 @@
+name "lua"
+description ""
+authors "Jonas Minnberg"
+copyright "Copyright © 2017, Jonas Minnberg"
+license "proprietary"
+targetType "library"
+dependency "derelict-lua" version="~>2.0.0-beta.1"
+

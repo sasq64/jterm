@@ -1,0 +1,7 @@
+name "ansifier"
+description "Ansi/text fuckery"
+authors "Jonas Minnberg"
+copyright "Copyright © 2017, Jonas Minnberg"
+license "Unknown"
+targetType "library"
+dependency "graphics" path="../graphics"
