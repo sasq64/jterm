@@ -3,7 +3,7 @@ function showHelp()
     writeln 'This is some help'
 end
 
-bind(DK_F1, showHelp)
+-- bind(DK_F1, showHelp)
 
 
 setFont("Input-16");
