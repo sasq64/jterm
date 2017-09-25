@@ -3,10 +3,10 @@ function showHelp()
     writeln 'This is some help'
 end
 
--- bind(DK_F1, showHelp)
+bind(DK_F1, showHelp)
 
 
-setFont("Monospace-16");
+setFont("Input-16");
 -- setFont("Menlo-16");
 
 colors = {

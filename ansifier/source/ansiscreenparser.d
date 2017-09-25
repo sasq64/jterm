@@ -9,6 +9,8 @@ version(trace) import diesel.minitrace;
 import ansiparser;
 import textscreen;
 
+public import dec;
+
 @safe class ansi_exception : Exception {
     this(string msg, string file = __FILE__, size_t line = __LINE__) { super(msg, file, line); }
 }
@@ -20,28 +22,7 @@ static const wchar[] decGraphics = [
     0x2265, 0x03C0, 0x2260, 0x00A3, 0x00B7
 ];
 
-enum {
-    DEC_CKM = 1, // Application Cursor Keys
-    DEC_SCNM = 5,
-    DEC_AWM = 7, // Wraparound mode
-    DEC_TCEM = 25, // Cursor
-    DEC_ALTBUF_ALT = 47,
-
-    DEC_ALTBUF = 1047,
-    DEC_SAVE_CURSOR = 1048,
-    DEC_ALT_AND_CURSOR = 1049,
-
-    DEC_X10_MOUSE               = 9,
-    DEC_VT200_MOUSE             = 1000,
-    DEC_VT200_HIGHLIGHT_MOUSE   = 1001,
-    DEC_BTN_EVENT_MOUSE         = 1002,
-    DEC_ANY_EVENT_MOUSE         = 1003,
-    DEC_FOCUS_EVENT_MOUSE       = 1004,
-    DEC_EXT_MODE_MOUSE          = 1005,
-    DEC_SGR_EXT_MODE_MOUSE      = 1006,
-    DEC_URXVT_EXT_MODE_MOUSE    = 1015,
-    DEC_ALTERNATE_SCROLL        = 1007,
-};
+import dec;
 
 @safe class AnsiScreenParser(FILE)
 {
@@ -66,13 +47,6 @@ enum {
     bool appKeypad = false;
 
     int[2] savedCursor;
-
-    public enum {
-        DECCKM = 1, // Application Cursor Keys
-        DECSCNM = 5,
-        DECAWM = 7, // Wraparound mode
-        DECTCEM = 25, // Cursor
-    };
 
     alias SACallback = void delegate(string);
     SACallback oscCallback;
@@ -170,7 +144,7 @@ enum {
         this.inFile = inFile;
         parser = new AnsiParser();
 
-        decMode[DECAWM] = true;
+        decMode[Dec.AWM] = true;
 
         escFunctions = [
             '#' : (char c) {
@@ -279,7 +253,7 @@ enum {
                     screen.setScrollRegion();
                     screen.setColor(defaultFg, defaultBg, 0);
                     screen.showCursor(true);
-                    decMode[DECAWM] = false;
+                    decMode[Dec.AWM] = false;
                     characterSet = [CHARSET_NORMAL, CHARSET_NORMAL, CHARSET_NORMAL, CHARSET_NORMAL];
                     screen.gotoXY(1,1);
                     shifting = false;
@@ -302,32 +276,34 @@ enum {
         case 'h':
             foreach(a ; args) {
                 decMode[a] = true;
-                switch(a) {
-                case DEC_CKM:
-                case DEC_BTN_EVENT_MOUSE:
-                case DEC_SGR_EXT_MODE_MOUSE:
-                case DEC_X10_MOUSE:
+				Dec ad = cast(Dec)a;
+                switch(ad) {
+                case Dec.CKM:
+                case Dec.BTN_EVENT_MOUSE:
+                case Dec.SGR_EXT_MODE_MOUSE:
+                case Dec.X10_MOUSE:
                     break;
 
-                case DECTCEM:
+                case Dec.TCEM:
                     screen.showCursor(true);
                     break;
                 //case DECSCNM:
                     // TODO: Global inverse
                     //break;
-                case DEC_SAVE_CURSOR:
+                case Dec.SAVE_CURSOR:
                     savedCursor[0] = screen.x;
                     savedCursor[1] = screen.y;
                     break;
-                case DEC_ALT_AND_CURSOR:
+                case Dec.ALT_AND_CURSOR:
                     savedCursor[0] = screen.x;
                     savedCursor[1] = screen.y;
-                    goto case DEC_ALTBUF;
-                case DEC_ALTBUF:
-                case DEC_ALTBUF_ALT:
+                    goto case Dec.ALTBUF;
+                case Dec.ALTBUF:
+                case Dec.ALTBUF2:
                     screen.altBuffer(true);
                     break;
                 default :
+					writeln("DEC: ", ad);
                     return false;
                 }
             }
@@ -335,20 +311,21 @@ enum {
         case 'l':
             foreach(a ; args) {
                 decMode[a] = false;
-                switch(a) {
-                case DECTCEM:
+				Dec ad = cast(Dec)a;
+                switch(ad) {
+                case Dec.TCEM:
                     screen.showCursor(false);
                     break;
-                case DECSCNM:
+                case Dec.SCNM:
                     break;
-                case DEC_SAVE_CURSOR:
+                case Dec.SAVE_CURSOR:
                     screen.gotoXY(savedCursor[0], savedCursor[1]);
                     break;
-                case DEC_ALT_AND_CURSOR:
+                case Dec.ALT_AND_CURSOR:
                     screen.gotoXY(savedCursor[0], savedCursor[1]);
-                    goto case DEC_ALTBUF;
-                case DEC_ALTBUF:
-                case DEC_ALTBUF_ALT:
+                    goto case Dec.ALTBUF;
+                case Dec.ALTBUF:
+                case Dec.ALTBUF2:
                     flags = 0;
                     fg = defaultFg;
                     bg = defaultBg;
@@ -356,6 +333,7 @@ enum {
                     screen.altBuffer(false);
                     break;
                 default :
+					writeln("DEC: ", ad);
                     return false;
                 }
             }
@@ -415,7 +393,7 @@ enum {
                     else
                         ws ~= c;
                 }
-                screen.write(ws, getMode(DECAWM));
+                screen.write(ws, getMode(Dec.AWM));
             } else if(seq.type == AnsiParser.OSC) {
                 if(oscCallback) {
                     oscCallback(seq.text);

@@ -30,6 +30,8 @@ import std.array;
 
 import std.algorithm : map;
 
+import core.sys.posix.unistd;
+
 void main(string[] args)
 {
     import std.conv;
@@ -38,15 +40,30 @@ void main(string[] args)
     //writeln(to!string(c));
 
 
-    setRaw(stdin);
     setNonBlocking(stdin);
     //setvbuf(pipes.stdin.getFP(), null, _IONBF, 0U);
 
+
     ubyte[10] buf;
+    size_t rc;
+    /* auto rc = fread(buf.ptr, 1, buf.length, stdin.getFP()); */
+    /* if(rc > 0) { */
+    /*     ubyte[] r = buf[0 .. rc]; */
+    /*     writeln(rc, " .. ", r); */
+    /*     auto s = cast(string)array(buf[0 .. rc].map!(c => c == 0x1b ? '!' : (c >= 0x20 && c <= 0x7f ? c : '_'))); */
+    /*     write("'", s, "' ", r, x"0a 0d"); */
+    /*     stdout.flush(); */
+
+    /* } */
+
+    if(args.length > 1 && args[1] == "q")
+        return;
+
+    setRaw(stdin);
 
     string value = "";
     while(true) {
-        auto rc = fread(buf.ptr, 1, buf.length, stdin.getFP());
+        rc = fread(buf.ptr, 1, buf.length, stdin.getFP());
         if(rc > 0) {
             ubyte[] r = buf[0 .. rc];
             if(isDigit(r[0]))
@@ -55,6 +72,10 @@ void main(string[] args)
                 write("\x1b>");
             else if(r[0] == 'Z')
                 write("\x1b=");
+            else if(r[0] == 'c')
+                write("\x1b[c");
+            else if(r[0] == 'C')
+                write("\x1b[>c");
             else if(r[0] == 'x' || r[0] == 'X')
                 break;
             else if(r[0] == 'h' || r[0] == 'l') {

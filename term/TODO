@@ -54,6 +54,7 @@ TERMINAL
 [x] Border for each terminal
 [x] Border should me 'minBorder', count wasted space
 [ ] Make sure alpha is 1.0 in screen
+[ ] Don't recenter console while resizing pane
 
 CODE QUALITY
 

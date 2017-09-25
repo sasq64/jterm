@@ -1,0 +1,50 @@
+enum Dec {
+	CKM  =  1, 
+	ANM  =  2, 
+	COLM =  3, 
+	SCLM =  4, 
+	SCNM =  5, 
+	OM   =  6, 
+	AWM  =  7, 
+	ARM  =  8, 
+	X10_MOUSE = 9,
+	RXVT_TOOLBAR = 10,
+	ATT610_BLINK = 12,
+
+	PFF = 18,
+	CPEX = 19,
+
+	TCEM = 25,
+	RXVT_SCROLLBAR = 30,
+	RXVT_FONT_SHIFT = 35,
+	TEK = 38,
+	ALLOW_COLMODE = 40,
+	NRCM = 42,
+	
+	ALTBUF = 47,
+	NKM = 66,
+	BKM = 67,
+	LRMM = 69,
+	NCSM = 95,
+
+
+
+    VT200_MOUSE             = 1000,
+    VT200_HIGHLIGHT_MOUSE   = 1001,
+    BTN_EVENT_MOUSE         = 1002,
+    ANY_EVENT_MOUSE         = 1003,
+    FOCUS_EVENT_MOUSE       = 1004,
+    EXT_MODE_MOUSE          = 1005,
+    SGR_EXT_MODE_MOUSE      = 1006,
+    ALTERNATE_SCROLL        = 1007,
+
+    URXVT_EXT_MODE_MOUSE    = 1015,
+
+	ALTBUF2 = 1047,
+    SAVE_CURSOR = 1048,
+    ALT_AND_CURSOR = 1049,
+
+	BRACKETED_PASTE = 2004,
+
+
+}

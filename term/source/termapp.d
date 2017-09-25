@@ -156,8 +156,15 @@ class TermApp
         version(OSX) mod = DKM_CMD;
         version(Windows) mod = DKM_CMD;
 
-        ops.bind(mod | 'm', &ops.setFontSize, ()=> currentTerm.font.font.size-1);
-        ops.bind(mod | 'p', &ops.setFontSize, [10,12,14,16,18,20,24,30]);
+        ops.bind(mod | 'p', &ops.setFontSize, () {
+                auto s = currentTerm.font.requestedSize / win.getScale();
+                return s + (s<24 ? 1 : 0);
+        });
+        ops.bind(mod | 'o', &ops.setFontSize, () {
+                auto s = currentTerm.font.requestedSize / win.getScale();
+                return s - (s>10 ? 1 : 0);
+        });
+        //ops.bind(mod | 'p', &ops.setFontSize, [10,11,12,13,14,15,16,18,20,24,30]);
         ops.bind(mod | DK_RIGHT, &ops.goRight);
         ops.bind(mod | DK_LEFT, &ops.goLeft);
         ops.bind(mod | DK_UP, &ops.goUp);
@@ -173,6 +180,7 @@ class TermApp
         ops.bind(mod | 'z', &ops.toggleZoom);
         ops.bind(mod | 'x', &ops.setTermScale, [1,2,3,4]);
         ops.bind(mod | 'b', &ops.takeScreenshot);
+        ops.bind(mod | 'v', &ops.paste);
 
         if(lua && lua.valid) {
             try {
@@ -352,6 +360,10 @@ class TermApp
             while(key) {
                 handleKey(key, pos);
                 key = win.getKey();
+            }
+
+            if(currentTerm && currentTerm.haveSelection()) {
+                win.putClipboard(currentTerm.popSelection());
             }
 
             win.setTarget();

@@ -150,7 +150,6 @@ alias CHAR = wchar;
                         writefln("Cursor line %d cut at %d", yy, xx);
                         writeln(line[0 .. xx].toString());
                         line = line[0 .. xx+1];
-                        //line = line[ xx .. xx + 1];
                         found = true;
                         break;
                     }

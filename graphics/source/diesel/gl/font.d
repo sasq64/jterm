@@ -30,8 +30,9 @@ class Font
     alias UV4 = UV[4];
     UV4[uint] indexMap;
 
-    vec2u size = [10,20];
-    vec2u nextPos;
+    int requestedSize;
+    vec2i size = [10,20];
+    vec2i nextPos;
 
     TTFFont font;
 
@@ -108,6 +109,8 @@ class Font
     this(TTFFont font, int[2] pixsize = [-1,-1])
     {
         this.font = font;
+        requestedSize = font.pixelSize;
+        writefln("REQSIZE %d", requestedSize);
         bitmap = Bitmap!PIXEL(1024,1024);
         if(!indexBuffer)
             setupIndexBuffer();
@@ -118,7 +121,6 @@ class Font
             size[1] = pixsize[1];
         init();
     }
-
 
     Font dup()
     {
@@ -155,6 +157,8 @@ class Font
 
     void setSize(int size)
     {
+        requestedSize = size;
+        writefln("REQSIZE %d", requestedSize);
         font.setSize(size);
         this.size = [ font.width, font.height ];
         init();

@@ -33,3 +33,8 @@ profile :
 
 run :
 	./jterm > /dev/null
+
+clean :
+	rm dub.selections.json
+	dub clean
+

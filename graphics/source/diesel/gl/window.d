@@ -386,15 +386,8 @@ class Window
                     } else if(e.type == SDL_QUIT)
                         doQuit = true;
 
-                    if(s != 0) {
-                        if(s == (DKM_CMD | cast(uint)'v')) { // OSX Cmd-v paste hack
-                            auto ct = to!string(SDL_GetClipboardText());
-                            foreach(dchar c ; ct)
-                                keys ~= c;
-                        } else {
-                            keys ~= s;
-                        }
-                    }
+                    if(s != 0)
+                        keys ~= s;
                 }
                 if(savedKey != 0) {
                     keys ~= savedKey;
@@ -403,6 +396,16 @@ class Window
                 looper();
                 SDL_GL_SwapWindow(window);
             }
+        }
+
+        string getClipboard() {
+            return to!string(SDL_GetClipboardText());
+        }
+
+        void putClipboard(string text) {
+            writeln("Copy ", text);
+            auto t = toz(text);
+            SDL_SetClipboardText(t);
         }
 
         void swap() {

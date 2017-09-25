@@ -5,12 +5,12 @@ import std.concurrency;
 import std.exception;
 import std.string : toz = toStringz;
 
+import std.conv;
 import core.time : Duration, dur;
 
 import diesel.vec;
 import diesel.gl;
 version(trace) import diesel.minitrace;
-
 
 class Console
 {
@@ -32,8 +32,10 @@ class Console
     Font font;
     bool resized = false;
 
-    int markStart;
-    int markEnd;
+    // Current selection
+    int selStart = -1;
+    int selEnd = -1;
+    int selPos = -1;
 
     vec3f bg;
     @property void bgColor(uint color) {
@@ -42,6 +44,83 @@ class Console
     };
     @property vec3f bgColor() {
         return bg;
+    }
+
+    void clearSelection()
+    {
+        begin();
+        foreach(int i, ref c ; buffer) {
+            if(c.marked) {
+                int[2] pos = [ i % cols , i / cols];
+                auto s = to!wstring(c.c);
+                //writefln("Restore %d '%x' %x %x", i, c.c, c.fg, c.bg);
+                write(s, pos, c.fg, c.bg, false);
+                c.marked = false;
+            }
+        }
+        end();
+    }
+
+    void startSelection(int[2] pos)
+    {
+        selPos = selStart = selEnd = pos[0] + pos[1] * cols;
+        updateSelection();
+        writeln("START ", selStart);
+    }
+
+    void extendSelection(int[2] pos)
+    {
+        auto i = pos[0] + pos[1] * cols;
+            if(i <= selPos) {
+                selStart = i;
+                selEnd = selPos;
+            } else if (i > selPos) {
+                selEnd = i;
+                selStart = selPos;
+            }
+            updateSelection();
+    }
+
+    private void updateSelection()
+    {
+        begin();
+        foreach(int i , ref c ; buffer) {
+            bool marked = (i >= selStart && i <= selEnd);
+            if(c.marked != marked) {
+                int[2] pos = [ i % cols , i / cols];
+                auto s = to!wstring(c.c);
+                write(s, pos,
+                        marked ? 0xff00_0000 : c.fg,
+                        marked ? 0xffff_ffff : c.bg,
+                false);
+                c.marked = marked;
+            }
+        }
+        end();
+    }
+
+    string getSelection()
+    {
+        import std.algorithm.iteration;
+        import std.utf;
+        import std.algorithm.mutation : stripRight;
+        import std.array : join, array;
+
+        int sx = selStart % cols;
+        int sy = selStart / cols;
+        int ex = selEnd % cols;
+        int ey = selEnd / cols;
+        string[] lines;
+        foreach(y ; sy .. ey+1) {
+            int x0 = y == sy ? sx : 0;
+            int x1 = y == ey ? ex+1 : cols;
+            auto s = toUTF8(array(buffer[x0 + y * cols .. x1 + y * cols].map!(c => c.c)().stripRight(' ')));
+            writeln(s);
+            lines ~= s;
+        }
+
+        return lines.join("\n");
+
     }
 
     void setFont(Font font)
@@ -72,25 +151,26 @@ class Console
         font.endTexts();
     }
 
-    void write(wstring text, int[2] p, uint fg, uint bg)
+    void write(wstring text, int[2] p, uint fg, uint bg, bool save = true)
     {
         import std.array;
 
-        if(p[1] > rows) return;
-        auto x = (p[0]-1) + (p[1]-1) * cols;
-        auto ex = p[1] * cols;
+        if(p[1] >= rows) return;
+        auto x = p[0] + p[1] * cols;
+        auto ex = (p[1]+1) * cols;
 
-        //writefln("%d %d %d %d", x, ex, cols, rows);
-        foreach(c ; text) {
-            if(x >= ex) break;
-            buffer[x++] = Cell(c, fg, bg);
+        if(save) {
+            foreach(c ; text) {
+                if(x >= ex) break;
+                buffer[x++] = Cell(c, fg, bg);
+            }
         }
 
         auto fw = font.size.x;
         auto fh = font.size.y;
         auto w = screenTexture.width;
         auto h = screenTexture.height;
-        vec2f pos = [p[0]*fw - fw - w*0.5, -(p[1]*fh - h*0.5)];
+        vec2f pos = [p[0]*fw - w*0.5, -(p[1]*fh + fh - h*0.5)];
         font.renderText(text, pos, fg, bg);
     }
 

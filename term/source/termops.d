@@ -259,6 +259,16 @@ class TermOps
         resize([sz.x, sz.y]);
     }
 
+    void paste()
+    {
+        Terminal ct = currentTerm;
+        if(ct) {
+            auto text = win.getClipboard();
+            foreach(dchar c ; text)
+                ct.putKey(c);
+        }
+    }
+
     void resize(int[2] delta)
     {
         auto x = delta[0];

@@ -1,5 +1,6 @@
 
 import launch : launch, PtyFile, signal_winsize;
+import dec : Dec;
 import ansiscreenparser;
 import textscreen;
 import std.string : format;
@@ -68,7 +69,7 @@ struct TermState {
         int rc = parser.update(10);
 		dead = (rc < 0);
         if(screen.changed) screenChanged = true;
-        bool ma = parser.getMode(DEC_BTN_EVENT_MOUSE) || parser.getMode(DEC_VT200_MOUSE);
+        bool ma = parser.getMode(Dec.BTN_EVENT_MOUSE) || parser.getMode(Dec.VT200_MOUSE);
         if(ma != state.mouseReport) {
             state.mouseReport = ma;
             changed = 1;
@@ -107,7 +108,7 @@ struct TermState {
     {
         if(currentMouse != pos) {
             currentMouse = pos;
-            if(parser.getMode(DEC_BTN_EVENT_MOUSE)) {
+            if(parser.getMode(Dec.BTN_EVENT_MOUSE)) {
                 int m = leftMouseDown ? 0 : 3;
                 wchar mc = (m == 0 ? 'M' : 'm');
                 //tty.write("\x1b[<" ~ to!string(m+32) ~ ";" ~to!string(currentMouse[0]) ~ ";" ~ to!string(currentMouse[1]) ~ (m == 0 ? "M" : "m"));
@@ -174,8 +175,8 @@ struct TermState {
         onKey([DK_LEFT_MOUSE_UP, DK_RIGHT_MOUSE_UP, DK_MIDDLE_MOUSE_UP,
                 DK_LEFT_MOUSE_DOWN, DK_WHEEL_UP,  DK_WHEEL_DOWN], (int k) {
             //leftMouseDown = k == 3;
-            if(parser.getMode(DEC_BTN_EVENT_MOUSE) || parser.getMode(DEC_VT200_MOUSE)) {
-                if(parser.getMode(DEC_SGR_EXT_MODE_MOUSE)) {
+            if(parser.getMode(Dec.BTN_EVENT_MOUSE) || parser.getMode(Dec.VT200_MOUSE)) {
+                if(parser.getMode(Dec.SGR_EXT_MODE_MOUSE)) {
                     static int[6] tx = [ 0, 2, 1, 0, 64, 65 ];
                     wchar mc = (k > 2 ? 'M' : 'm');
                     tty.write(format("\x1b[<%d;%d;%d%c", tx[k], currentMouse[0], currentMouse[1], mc));
@@ -194,7 +195,7 @@ struct TermState {
 
         onKey([DK_UP, DK_DOWN, DK_RIGHT, DK_LEFT], (int k, uint m){
             const string letters = "ABCD";
-            bool am = parser.getMode(AnsiScreenParser!PtyFile.DECCKM);
+            bool am = parser.getMode(Dec.CKM);
             string mods = mods2code(m);
             if(mods != "") {
                 mods = "1" ~ mods;
@@ -218,7 +219,7 @@ struct TermState {
         });
 
         onKey(DK_HOME, (int, uint m) {
-            bool am = parser.getMode(AnsiScreenParser!PtyFile.DECCKM);
+            bool am = parser.getMode(Dec.CKM);
             string mods = mods2code(m);
             if(mods != "") {
                 mods = "1" ~ mods;
@@ -231,7 +232,7 @@ struct TermState {
         });
 
         onKey(DK_END, (int, uint m) {
-            bool am = parser.getMode(AnsiScreenParser!PtyFile.DECCKM);
+            bool am = parser.getMode(Dec.CKM);
             string mods = mods2code(m);
             if(mods != "") {
                 mods = "1" ~ mods;

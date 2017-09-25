@@ -5,7 +5,9 @@ import std.string : toz = toStringz;
 import std.conv;
 
 import fontconfig.fontconfig;
+import derelict.freetype.ft;
 
+// Fontconfig helpers
 
 T PatternGet(T)(FcPattern *p, const char *object, int n) {
     T t;
@@ -15,7 +17,7 @@ T PatternGet(T)(FcPattern *p, const char *object, int n) {
         result = FcPatternGetString(p, object, n, &str);
         t = to!string(str);
     } else static if(is(T == int))
-        result = FcPatternGetInt(p, object, n, &t);
+        result = FcPatternGetInteger(p, object, n, &t);
     else static if(is(T == double))
         result = FcPatternGetDouble(p, object, n, &t);
 
@@ -25,102 +27,175 @@ T PatternGet(T)(FcPattern *p, const char *object, int n) {
     return t;
 }
 
+class ft_exception : Exception {
+    this(string msg, string file = __FILE__, size_t line = __LINE__) { super(msg, file, line); }
+}
+
+auto check(alias FN, string FILE = __FILE__, int LINE = __LINE__, ARGS ...)(ARGS args) {
+    import std.format : format;
+    scope(exit) {
+        FT_Error e = FN(args);
+        if(e != 0) throw new ft_exception(format("%s() : FT Error 0x%x",
+            __traits(identifier, FN), e), FILE, LINE);
+    }
+    return FN(args);
+}
+
 class Font
 {
-    import derelict.freetype.ft;
-
-    FT_Library flib;
-    FT_Face face;
-    FT_Size ftSize;
-
-    int width;
-    int height;
-    int size;
-    bool mono;
-
-    class ft_exception : Exception {
-        this(string msg, string file = __FILE__, size_t line = __LINE__) { super(msg, file, line); }
-    }
-
-    auto check(alias FN, string FILE = __FILE__, int LINE = __LINE__, ARGS ...)(ARGS args) {
-        import std.format : format;
-        scope(exit) {
-            FT_Error e = FN(args);
-            if(e != 0) throw new ft_exception(format("%s() : FT Error 0x%x",
-                __traits(identifier, FN), e), FILE, LINE);
+    FontSet font;
+    int pixelSize;
+    union {
+        struct {
+            int width;
+            int height;
         }
-        return FN(args);
+        int[2] size;
     }
 
-    Font dup() {
-        Font f = new Font;
-        f.flib = flib;
-        f.mono = mono;
-        f.face = face;
-        f.ftSize = ftSize;
-        check!FT_New_Size(f.face, &f.ftSize);
-        f.setSize(size);
-        //writeln("DUP SIZE ", size);
+
+    void renderChar(T)(dchar c, T[] target, int stride, int width = 0, int height = 0)
+    {
+        font.renderChar(pixelSize, c, target, stride, width, height);
+    }
+
+
+    this() {}
+
+    this(string name, float scale = 1.0, bool mono = false)
+    {
+        font = new FontSet(name, scale, mono);
+        this.pixelSize = font.size;
+        this.size = font.getActualSize();
+    }
+
+    this(const ubyte* ptr, size_t length, int size = -1, bool mono = false)
+    {
+        font = new FontSet(ptr, length, size, mono);
+        this.pixelSize = font.size;
+        this.size = font.getActualSize();
+    }
+
+    void setSize(int psz)
+    {
+        pixelSize = psz;
+        size = font.getActualSize(psz);
+    }
+
+    Font dup()
+    {
+        auto f = new Font();
+        f.font = font;
+        f.size = size;
+        f.pixelSize = pixelSize;
         return f;
     }
 
+    alias font this;
+}
 
-    void setSize(int size)
-    {
-        this.size = size;
-        //writeln("SET SIZE ", size);
-        check!FT_Activate_Size(ftSize);
-        check!FT_Set_Pixel_Sizes(face, size, 0);
-        if(FT_Load_Char(face, 'X', FT_LOAD_NO_BITMAP) != 0)
-            return;
-        auto m = face.size.metrics;
-        auto m2 = face.glyph.metrics;
-        //writefln("%d %d %d", m2.horiAdvance, m2.width, m.max_advance);
-        width = cast(int)(m2.horiAdvance >> 6);
-        height = cast(int)(m.height >> 6);
-    }
+
+class FontSet
+{
+
+    FT_Library flib;
+    FT_Face[] face;
+    FT_Face currentFace;
+    int size; // Original size
+    bool mono;
+
+    // FT_Size for each pixelSize
+    FT_Size[int][4] sizeList;
 
     this() {}
 
     FcPattern* fontPattern;
 
-    void fromConfig(string fontSpec)
+    // Create face list from fontconfig spec
+    void fromConfig(string fontSpec, float scale = 1.0f)
     {
-        auto fpattern = toz(fontSpec);
-
-        //if(!FcInit())
-        //  throw new Exception("Can't init font config library");
         auto config = FcInitLoadConfigAndFonts();
-        //writeln(config);
-        //make pattern from font name
-        //auto pat = FcNameParse(cast(const FcChar8*)"Hack");
-        fontPattern = FcNameParse(cast(const FcChar8*)fpattern);
-        //FcPatternPrint(fontPattern);
-        FcConfigSubstitute(config, fontPattern, FcMatchKind.FcMatchPattern);
-        //FcPatternPrint(fontPattern);
-        //FcPatternAddString(fontPattern, FC_STYLE, "Bold");
+        fontPattern = FcNameParse(cast(const FcChar8*)toz(fontSpec));
         FcPatternAddInteger(fontPattern, FC_SPACING, FC_MONO);
+        FcPatternPrint(fontPattern);
+
         FcDefaultSubstitute(fontPattern);
-        //FcPatternPrint(fontPattern);
+        FcPatternPrint(fontPattern);
+		int primary = -1;
+		int secondary = -1;
+
         FcResult result;
+        auto fset = FcFontSort(config, fontPattern, FcFalse, null, &result);
+        int curf = 0;
+        for (curf = 0; curf < fset.nfont; ++curf) {
+		    auto curp = fset.fonts[curf];
+            int spacing = 0;
+            try {
+                spacing = PatternGet!int(curp, FC_SPACING, 0);
+            } catch(Exception e) {}
+            if(spacing != 100)
+                continue;
+			if(primary == -1)
+				primary = curf;
+            auto fontName = PatternGet!string(curp, FC_FILE, 0);
+            auto name = to!string(fontName);
+            writeln(name);
+            FcCharSet* charset;
+            result = FcPatternGetCharSet(curp, FC_CHARSET, 0, &charset);
+		    if (result != FcResult.FcResultMatch)
+			    continue;
+		    if (FcCharSetHasChar(charset, 0x2663) && FcCharSetHasChar(charset, 0x276f)) {
+				secondary = curf;
+				break;
+			}
+        }
 
+        face = new FT_Face[2];
+        auto rpat = FcFontRenderPrepare(config, fontPattern, fset.fonts[primary]);
+        FcPatternPrint(rpat);
+        auto fontName = PatternGet!string(rpat, FC_FILE, 0);
+        check!FT_New_Face(flib, toz(fontName), 0, &face[0]);
+        this.size = cast(int)(PatternGet!double(rpat, FC_SIZE, 0) * scale);
 
-
-        fontPattern = FcFontMatch(config, fontPattern, &result);
+        rpat = FcFontRenderPrepare(config, fontPattern, fset.fonts[secondary]);
+        FcPatternPrint(rpat);
+        fontName = PatternGet!string(rpat, FC_FILE, 0);
+        check!FT_New_Face(flib, toz(fontName), 0, &face[1]);
     }
+
+
+    FT_Size getSize(int pixelSize, int index)
+    {
+        if(!(pixelSize in sizeList[index])) {
+            FT_Size fts;
+            check!FT_New_Size(face[index], &fts);
+            check!FT_Activate_Size(fts);
+            check!FT_Set_Pixel_Sizes(face[index], pixelSize, 0);
+            sizeList[index][pixelSize] = fts;
+        }
+        check!FT_Activate_Size(sizeList[index][pixelSize]);
+        return sizeList[index][pixelSize];
+    }
+
+    int[2] getActualSize(int pixelSize = -1)
+    {
+        if(pixelSize == -1) pixelSize = size;
+
+        auto fs = getSize(pixelSize, 0);
+        if(FT_Load_Char(face[0], 'X', FT_LOAD_NO_BITMAP) != 0)
+            return [-1, -1];
+        auto m = face[0].size.metrics;
+        auto m2 = face[0].glyph.metrics;
+        return [cast(int)(m2.horiAdvance >> 6), cast(int)(m.height >> 6)];
+    }
+
 
     this(string name, float scale = 1.0, bool mono = false)
     {
-        fromConfig(name);
-        auto fontName = PatternGet!string(fontPattern, FC_FILE, 0);
-        this.size = cast(int)(PatternGet!double(fontPattern, FC_SIZE, 0) * scale);
         this.mono = mono;
-        writeln(fontName, ",", this,size);
         DerelictFT.load();
         check!FT_Init_FreeType(&flib);
-        check!FT_New_Face(flib, toz(fontName), 0, &face);
-        check!FT_New_Size(face, &ftSize);
-        setSize(this.size);
+        fromConfig(name, scale);
     }
 
     this(const ubyte* ptr, size_t length, int size = -1, bool mono = false)
@@ -129,22 +204,40 @@ class Font
         this.size = size;
         DerelictFT.load();
         check!FT_Init_FreeType(&flib);
-        check!FT_New_Memory_Face(flib, ptr, length, 0, &face);
-        check!FT_New_Size(face, &ftSize);
-        setSize(size);
+        check!FT_New_Memory_Face(flib, ptr, length, 0, &face[0]);
+    }
+
+    void renderChar(T)(int pixelSize, dchar c, T[] target, int stride, int width = 0, int height = 0)
+    {
+        int index = -1;
+        foreach(int i, f ; face) {
+            if(FT_Get_Char_Index(f, c) != 0) {
+                index = i;
+                break;
+            }
+        }
+
+        if(index == -1)
+            return;
+        currentFace = face[index];
+
+        auto fts = getSize(pixelSize, index);
+        check!FT_Activate_Size(fts);
+        renderChar(c, target, stride, width, height);
     }
 
     void renderChar(T)(dchar c, T[] target, int stride, int width = 0, int height = 0)
     {
-        check!FT_Activate_Size(ftSize);
-        if(FT_Load_Char(face, c, FT_LOAD_RENDER | (mono ? FT_LOAD_MONOCHROME : 0)) != 0)
+        if(FT_Load_Char(currentFace, c, FT_LOAD_RENDER | (mono ? FT_LOAD_MONOCHROME : 0)) != 0) {
+            writefln("Char %x not found in font", c);
             return;
-        auto b = face.glyph.bitmap;
+        }
+        auto b = currentFace.glyph.bitmap;
 
-        auto delta = face.size.metrics.ascender / 64;
+        auto delta = currentFace.size.metrics.ascender / 64;
 
-        auto xoffs = face.glyph.bitmap_left ;
-        auto yoffs = delta - face.glyph.bitmap_top;
+        auto xoffs = currentFace.glyph.bitmap_left ;
+        auto yoffs = delta - currentFace.glyph.bitmap_top;
 
         //writefln("%d x %d (%d,%d)", b.width, b.rows, face.glyph.bitmap_left, face.glyph.bitmap_top);
         ubyte* data = b.buffer;
@@ -169,8 +262,4 @@ class Font
             }
         }
     }
-
-    /* private void check(FT_Error e, string file = __FILE__, uint line = __LINE__) { */
-    /*     if(e) throw new Exception("FT", file, line); */
-    /* } */
 }

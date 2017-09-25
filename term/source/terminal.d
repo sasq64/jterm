@@ -59,6 +59,7 @@ class Terminal
     static Terminal get(int n) { return terminals[n]; }
     static ulong length() { return terminals.length; }
 
+    bool marking = false;
 
     int scrollPos = 0;
 
@@ -120,7 +121,7 @@ class Terminal
         }
         if(c.flags & TextScreen.CURSOR_POS)
             bg = 0xfff08000;
-        console.write(c.text, [c.x,c.y], fg, bg);
+        console.write(c.text, [c.x - 1, c.y - 1], fg, bg);
     }
 
     void setFont(Font font)
@@ -171,13 +172,25 @@ class Terminal
         console.resize(cw, ch);
     }
 
+    int[2] currentMouse;
+
     void reportMouse(int[2] pos)
     {
+        pos[0] = pos[0] - (width - console.width * zoom) /2;
+        pos[1] = pos[1] - (height - console.height * zoom) /2;
+        pos[] = pos[] / (font.size[] * zoom);
+        currentMouse = pos;
+        pos[0] = pos[0] + 1;
+        pos[1] = pos[1] + 1;
         if(state.mouseReport) {
-            pos[0] = pos[0] / (font.size.x * zoom) + 1;
-            pos[1] = pos[1] / (font.size.y * zoom) + 1;
-            version(threaded) send(sessionThread, ReportMouse(pos));
+            version(threaded) {
+                if(pos[0] > 0 && pos[1] > 0)
+                    send(sessionThread, ReportMouse(pos));
+            }
         } else {
+            if(marking) {
+                console.extendSelection(currentMouse);
+            }
         }
     }
 
@@ -212,7 +225,7 @@ class Terminal
                 (int id, TermState state) {
                     writeln("Got new state ", state.mouseReport);
                     terminals[id].state = state;
-					terminals[id].scrollPos = state.scrollPos;
+                    terminals[id].scrollPos = state.scrollPos;
                 },
                 (int id, immutable(Change)[] changes) {
                     terminals[id].console.begin();
@@ -259,6 +272,8 @@ class Terminal
         }
     }
 
+    string selection = null;
+
     void putKey(const uint key)
     {
         if(!state.mouseReport) {
@@ -274,10 +289,35 @@ class Terminal
                 if(sp != scrollPos)
                     send(sessionThread, SetScroll(scrollPos));
             }
+            if(key == DK_LEFT_MOUSE_DOWN) {
+                marking = true;
+                console.clearSelection();
+                console.startSelection(currentMouse);
+            } else if(key == DK_LEFT_MOUSE_UP) {
+                marking = false;
+                selection = console.getSelection();
+                writeln("SELECTIOIN ", selection);
+                console.clearSelection();
+            }
+
+            if((key & KEYCODE) == 0) {
+                if(scrollPos != 0) {
+                    scrollPos = 0;
+                    send(sessionThread, SetScroll(scrollPos));
+                }
+            }
+
         }
         version(threaded) send(sessionThread, KeyCode(key));
         else session.putKey(key);
 
+    }
+
+    bool haveSelection() { return selection != null; }
+    string popSelection() {
+        auto rc = selection;
+        selection = null;
+        return rc;
     }
 
     /* void setPalette(immutable uint[] colors) { */
