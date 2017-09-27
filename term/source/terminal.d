@@ -4,6 +4,7 @@ import std.concurrency;
 import std.exception;
 import std.string : toz = toStringz;
 
+import std.conv : to;
 import core.time : Duration, dur;
 
 import std.experimental.logger;
@@ -69,6 +70,10 @@ class Terminal
         struct RESIZE {}
         struct QUIT {}
 
+        struct Call {
+            void delegate(TerminalSession) shared pure fn;
+        }
+
         struct Focus { bool yes; }
 
         struct ReportMouse {
@@ -93,6 +98,7 @@ class Terminal
         }
 
         struct OSCData {
+            int cmd;
             string text;
         }
 
@@ -131,32 +137,21 @@ class Terminal
     }
 
     int border = 0;
+    int resizedWhen = 0;
+    int frameCounter = 0;
 
     void resize(int w = -1, int h = -1)
     {
+        if(w != width || h != height)
+            resizedWhen = frameCounter;
         if(w >= 0) width = w;
         if(h >= 0) height = h;
 
-        int cw = width;//  / zoo;
-        int ch = height;// zoom;
+        int cw = width/zoom;
+        int ch = height/zoom;
 
-        cw /= zoom;
-        ch /= zoom;
-
-        // We need this much extra space
-        auto b = border*2/zoom;
-
-        // Actual extra space
-        int bx = (cw % font.size.x);
-        int by = (ch % font.size.y);
-
-        // Shrink allocated space for console as needed
-        if(bx < b) cw -= (b - bx);
-        if(by < b) ch -= (b - by);
-
-
-        int cols = cw / font.size.x;
-        int rows = ch / font.size.y;
+        int cols = (cw - border*2) / font.size.x;
+        int rows = (ch - border*2) / font.size.y;
 
         if(cols < 1) cols = 1;
         if(rows < 1) rows = 1;
@@ -168,8 +163,8 @@ class Terminal
             } else {
                 session.resize(cols, rows);
             }
+            console.resize(cols, rows);
         }
-        console.resize(cw, ch);
     }
 
     int[2] currentMouse;
@@ -199,8 +194,15 @@ class Terminal
         console.screenTexture.bind();
         int[2] sz = console.screenTexture.size[] * zoom;
         prg.setUniform("active", activeTerminal == this ? 1.0 : 0.0);
-        int[2] xyb = xy[] + [ (width - console.width * zoom) / 2, (height - console.height * zoom) / 2];
+        int[2] xyb;
+        if(frameCounter > resizedWhen + 8)
+            xyb = xy[] + [ (width - console.width * zoom) / 2,
+                           (height - console.height * zoom) / 2];
+        else
+            xyb = xy[] + [border * zoom, border * zoom];
         renderRectangle(xyb, sz, prg);
+
+        frameCounter++;
     }
 
     static void updateAll()
@@ -223,7 +225,6 @@ class Terminal
                     terminals[id].quit();
                 },
                 (int id, TermState state) {
-                    writeln("Got new state ", state.mouseReport);
                     terminals[id].state = state;
                     terminals[id].scrollPos = state.scrollPos;
                 },
@@ -242,7 +243,10 @@ class Terminal
                     terminals[id].console.end();
                 },
                 (int id, OSCData osc) {
-                    writeln("COMMAND " ~ osc.text);
+                    if(osc.cmd == 1)
+                        writeln("Started ", osc.text);
+                    else if(osc.cmd == 543)
+                        writeln("COMMAND " ~ osc.text);
                 }
                 //,(Variant v) { writeln("ERROR ", v.type); }
             )) {}
@@ -320,12 +324,14 @@ class Terminal
         return rc;
     }
 
-    /* void setPalette(immutable uint[] colors) { */
-    /*     send(sessionThread, colors); */
-    /* } */
+    void setPalette(immutable uint[] colors) {
+        version(threaded) send(sessionThread, colors);
+        else session.setPalette(colors);
+    }
 
     void setPalette(uint[] colors) {
-        send(sessionThread, SetPalette(colors.idup));
+        version(threaded) send(sessionThread, SetPalette(colors.idup));
+        else session.setPalette(color);
         console.bgColor = colors[0];
     }
 
@@ -354,16 +360,14 @@ version(threaded) {
         bool quit = false;
         bool deadSent = false;
         int count = 0;
-        string[] oscData;
+        OSCData[] oscData;
         session.onOSC((string s) @safe {
             import std.algorithm.iteration : splitter;
             import std.array;
             writeln("OSC: ", s);
             auto args = array(splitter(s, ";"));
             if(args.length > 1) {
-                if(args[0] == "543") {
-                    oscData ~= args[1];
-                }
+                oscData ~= OSCData(to!int(args[0]), args[1]);
             }
         });
         try {
@@ -375,7 +379,7 @@ version(threaded) {
                     if(rc == 1)
                         send(parentTid, id, session.state);
                     foreach(o ; oscData) {
-                        send(parentTid, id, OSCData(o));
+                        send(parentTid, id, o);
                     }
                     oscData.length = 0;
                 }
@@ -440,7 +444,7 @@ version(threaded) {
         width = w;
         height = h;
 
-        console = new Console(font, w / zoom, h / zoom);
+        console = new Console(font, cols, rows);
         terminals ~= this;
         id = cast(int)terminals.length - 1;
         synchronized {

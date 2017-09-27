@@ -142,7 +142,7 @@ static @trusted toImmutable(T)(T c) {
     void resize(int w, int h) {
         width = w;
         height = h;
-        debug writeln("RESIZE ", w, "x", h);
+        //debug writeln("RESIZE ", w, "x", h);
 
         foreach(ref d ; allLines) {
             if(w != d.length)

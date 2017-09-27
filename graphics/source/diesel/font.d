@@ -204,6 +204,7 @@ class FontSet
         this.size = size;
         DerelictFT.load();
         check!FT_Init_FreeType(&flib);
+        face = new FT_Face[2];
         check!FT_New_Memory_Face(flib, ptr, length, 0, &face[0]);
     }
 

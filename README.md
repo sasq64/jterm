@@ -7,15 +7,16 @@ Works on Linux, OSX, Raspberry PI
 ## Building
 
 Make sure you have _LDC_ (The LLVM D Compiler), _Dub_ (The D build tool),
-_libfontconfig_, _liblua_ and the _SDL2_ library installed. Then just `make`.
+_fontconfig_, _liblua_ and the _SDL2_ library installed.
 
 OSX :`brew install ldc dub sdl2 lua@5.3 fontconfig`
-Linux : `sudo apt install ldc dub libsdl2-2.0.0`
+Linux : `sudo apt install ldc dub libsdl2-2.0.0 fontconfig`
 
-Then to start:
+Then:
 
 ```
 cd term
+make
 cp misc/startup.lua .
 ./jterm
 ```
@@ -32,7 +33,7 @@ cp misc/startup.lua .
 * Meta-W = Close split
 * Meta-Z = Toggle zoom
 * Meta-P = Increase font size
-* Meta-O = Decreas font size
+* Meta-O = Decrease font size
 * Meta-V = Paste
 * Meta-Right/Left/Up/Down = Switch split
 

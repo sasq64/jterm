@@ -28,11 +28,11 @@ struct TermState {
     private bool screenChanged = true;
     private bool dead = false;
 
-	struct Cb {
-		int offset;
-		void delegate(int, uint) @safe cb;
-		alias cb this;
-	}
+    struct Cb {
+        int offset;
+        void delegate(int, uint) @safe cb;
+        alias cb this;
+    }
 
     private Cb[int] keyCallbacks;
     private Cb defaultCb;
@@ -65,9 +65,9 @@ struct TermState {
     int update()
     {
         int changed = 0;
-		if(dead) return -1;
+        if(dead) return -1;
         int rc = parser.update(10);
-		dead = (rc < 0);
+        dead = (rc < 0);
         if(screen.changed) screenChanged = true;
         bool ma = parser.getMode(Dec.BTN_EVENT_MOUSE) || parser.getMode(Dec.VT200_MOUSE);
         if(ma != state.mouseReport) {
@@ -155,7 +155,7 @@ struct TermState {
     private void onKey(ARGS...)(int[] codes, void delegate(ARGS) @safe cb)
     {
         foreach(int i, code ; codes)
-			onKey(code, cb, i);
+            onKey(code, cb, i);
     }
 
     private void setupKeys()
@@ -188,10 +188,10 @@ struct TermState {
             }
         });
 
-		onKey([DK_ESC, DK_ENTER, DK_BACKSPACE, DK_TAB], (int k) {
-				char[] x = [0x1b,13,8,9];
-				tty.write(format("%c", x[k]));
-		});
+        onKey([DK_ESC, DK_ENTER, DK_BACKSPACE, DK_TAB], (int k) {
+                char[] x = [0x1b,13,8,9];
+                tty.write(format("%c", x[k]));
+        });
 
         onKey([DK_UP, DK_DOWN, DK_RIGHT, DK_LEFT], (int k, uint m){
             const string letters = "ABCD";

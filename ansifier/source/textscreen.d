@@ -119,7 +119,7 @@ alias CHAR = wchar;
 
     override void resize(int w, int h) {
 
-        writefln("RESIZE %dx%d", w, h);
+        //writefln("RESIZE %dx%d", w, h);
 
         didChange = true;
 
@@ -147,8 +147,8 @@ alias CHAR = wchar;
             foreach(yy, ref line ; lines) {
                 foreach(xx, cell ; line) {
                     if(cell.c == 0x1b) {
-                        writefln("Cursor line %d cut at %d", yy, xx);
-                        writeln(line[0 .. xx].toString());
+                        //writefln("Cursor line %d cut at %d", yy, xx);
+                        //writeln(line[0 .. xx].toString());
                         line = line[0 .. xx+1];
                         found = true;
                         break;
@@ -156,7 +156,7 @@ alias CHAR = wchar;
                 }
                 if(found) {
                     lines = lines [0 .. yy+1];
-                    writefln("Last line: %02x", lines[$-1][0].c);
+                    //writefln("Last line: %02x", lines[$-1][0].c);
                     break;
                 }
             }
@@ -174,7 +174,7 @@ alias CHAR = wchar;
 
             foreach(i, l ; lines)
                 if(l != empty) {
-                    writeln("First non empty line at ", i);
+                    //writeln("First non empty line at ", i);
                     scrollBackTop = cast(int)(len - i);
                     break;
                 }
@@ -186,7 +186,7 @@ alias CHAR = wchar;
             foreach(int yy, ref line ; screen) {
                 foreach(int xx, ref cell ; line) {
                     if(cell.c == 0x1b) {
-                        writefln("Cursor at %d, %d", xx, yy);
+                       // writefln("Cursor at %d, %d", xx, yy);
                         cell.c = ' ';
                         x = xx + 1;
                         y = yy + 1;

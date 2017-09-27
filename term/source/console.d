@@ -174,10 +174,8 @@ class Console
         font.renderText(text, pos, fg, bg);
     }
 
-    void resize(int w, int h)
+    void resize(int c, int r)
     {
-        int c = w / font.size.x;
-        int r = h / font.size.y;
         width = c * font.size.x;
         height = r * font.size.y;
         if(c != cols || r != rows) {
@@ -190,8 +188,6 @@ class Console
     this(Font font, int w, int h)
     {
         this.font = font;
-        this.cols = w / font.size.x;
-        this.rows = h / font.size.y;
         resize(w,h);
         updateTexture();
     }

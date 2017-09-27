@@ -178,7 +178,11 @@ class TermApp
         ops.bind(mod | 'a', &ops.horizontalSplit);
         ops.bind(mod | 'w', &ops.closeCurrent);
         ops.bind(mod | 'z', &ops.toggleZoom);
-        ops.bind(mod | 'x', &ops.setTermScale, [1,2,3,4]);
+        ops.bind(mod | 'x', &ops.setTermScale, () {
+            int z = currentTerm.zoom + 1;
+            if(z > 4) z = 1;
+            return z;
+        });
         ops.bind(mod | 'b', &ops.takeScreenshot);
         ops.bind(mod | 'v', &ops.paste);
 
