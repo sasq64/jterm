@@ -31,10 +31,20 @@ release :
 profile :
 	dub build --config=$(CONFIG) -b profile
 
+trace :
+	dub build --config=trace -b release
+
 run :
 	./jterm > /dev/null
 
 clean :
 	rm dub.selections.json
 	dub clean
+
+APP = JTerm.app/Contents
+bundle :
+	rm -rf JTerm.app
+	mkdir -p $(APP)/MacOS
+	cp jterm $(APP)/MacOS/
+	cp misc/Info.plist $APP/
 

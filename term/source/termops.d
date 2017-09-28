@@ -9,6 +9,8 @@ import diesel.gl.font;
 
 import imageformats;
 
+import luainterpreter : script;
+
 class BindBase {
     abstract void call();
 }
@@ -69,6 +71,13 @@ class TermOps
         binds[key] = b;
     }
 
+    @script void bindKey(uint key, void delegate() fn)
+    {
+        auto b = new Bind!(typeof(fn), void);
+        b.fn = fn;
+        binds[key] = b;
+    }
+
     bool handle(uint key)
     {
         auto ptr = (key in binds);
@@ -79,7 +88,7 @@ class TermOps
         return false;
     }
 
-    void setBorder(int b = -1) {
+    @script void setBorder(int b = -1) {
         border = b;
         writeln("BORDER " ,b);
         if(currentTerm) {
@@ -107,7 +116,7 @@ class TermOps
         /* }); */
 
 
-    void setPalette(uint[] colors) {
+    @script void setPalette(uint[] colors) {
         defaultPalette = colors;
         bgColor = vec3f(colors[0]);
         if(currentTerm)
@@ -115,7 +124,7 @@ class TermOps
 
     }
 
-    void setFont(string spec) {
+    @script void setFont(string spec) {
         writeln("SET FONT ", spec, win.getScale());
         Font font = new Font(spec, win.getScale());
         this.font = font;
@@ -129,7 +138,7 @@ class TermOps
     bool zoomed = false;
     NODE zoomedNode;
     NODE savedRoot;
-    void toggleZoom() {
+    @script void toggleZoom() {
         if(!zoomed) {
             savedRoot = root;
             zoomedNode = currentNode;
@@ -146,7 +155,7 @@ class TermOps
         zoomed = !zoomed;
     }
 
-    void setTermScale(int scale)
+    @script void setTermScale(int scale)
     {
         if(currentTerm) {
             currentTerm.zoom = scale;
@@ -154,7 +163,7 @@ class TermOps
         }
     }
 
-    void setFontSize(int size)
+    @script void setFontSize(int size)
     {
         if(currentTerm) {
             currentTerm.font.setSize(size * win.getScale());
@@ -163,7 +172,7 @@ class TermOps
     }
 
     // TODO: Split seems to leave both active = true ?
-    void horizontalSplit()
+    @script void horizontalSplit()
     {
         NODE n;
         if(!currentNode.parent)
@@ -180,12 +189,12 @@ class TermOps
         currentTerm = n.payload;
     }
 
-    void closeCurrent()
+    @script void closeCurrent()
     {
         closeTerm(currentNode);
     }
 
-    void verticalSplit()
+    @script void verticalSplit()
     {
         NODE n;
         if(!currentNode.parent)
@@ -202,7 +211,7 @@ class TermOps
         currentTerm = n.payload;
     }
 
-    void equalizeAll()
+    @script void equalizeAll()
     {
         /* root.forEach((NODE n) { */
         /*     n.weight = 1.0; */
@@ -212,7 +221,7 @@ class TermOps
         reorg();
     }
 
-    void goUp()
+    @script void goUp()
     {
         if(!currentNode) return;
         if(lastNode && lastNode.findBelow() == currentNode)
@@ -221,7 +230,7 @@ class TermOps
             setTerm(currentNode.findAbove());
     }
 
-    void goDown()
+    @script void goDown()
     {
         if(!currentNode) return;
         if(lastNode && lastNode.findAbove() == currentNode)
@@ -230,7 +239,7 @@ class TermOps
             setTerm(currentNode.findBelow());
     }
 
-    void goLeft()
+    @script void goLeft()
     {
         if(!currentNode) return;
         if(lastNode && lastNode.findRight() == currentNode)
@@ -239,7 +248,7 @@ class TermOps
             setTerm(currentNode.findLeft());
     }
 
-    void goRight()
+    @script void goRight()
     {
         if(lastNode && lastNode.findLeft() == currentNode)
             setTerm(lastNode);
@@ -298,18 +307,27 @@ class TermOps
         reorg();
     }
 
-	void takeScreenshot()
-	{
-		auto tex = currentTerm.console.screenTexture;
-		auto d = tex.getPixels();
-		auto data = new uint[d.length];
-		int a = 0;
-		int b = (tex.height-1) * tex.width;
-		foreach(_ ; 0 .. tex.height) {
-			data[a .. a+tex.width] = d[b .. b + tex.width];
-			a += tex.width;
-			b -= tex.width;
-		}
-		write_image("shot.tga", tex.width, tex.height, cast(const ubyte[])data);
-	}
+    void takeScreenshot()
+    {
+        auto tex = currentTerm.console.screenTexture;
+        auto d = tex.getPixels();
+        auto data = new uint[d.length];
+        int a = 0;
+        int b = (tex.height-1) * tex.width;
+        foreach(_ ; 0 .. tex.height) {
+            data[a .. a+tex.width] = d[b .. b + tex.width];
+            a += tex.width;
+            b -= tex.width;
+        }
+        write_image("shot.tga", tex.width, tex.height, cast(const ubyte[])data);
+    }
+
+    @script void toast(string title)
+    {
+    }
+
+    @script void onCommand(string pattern, void delegate() onStart, void delegate() onEnd)
+    {
+
+    }
 }

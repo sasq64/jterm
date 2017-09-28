@@ -28,6 +28,12 @@ struct TermState {
     private bool screenChanged = true;
     private bool dead = false;
 
+    private bool _focus;
+    bool focus() { return _focus; }
+    void focus(bool b) {
+        _focus = b;
+    }
+
     struct Cb {
         int offset;
         void delegate(int, uint) @safe cb;

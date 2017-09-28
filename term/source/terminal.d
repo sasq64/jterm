@@ -70,33 +70,26 @@ class Terminal
         struct RESIZE {}
         struct QUIT {}
 
-        struct Call {
-            void delegate(TerminalSession) shared pure fn;
+        class BaseCall {
+            void call(TerminalSession) immutable {
+            }
         }
 
-        struct Focus { bool yes; }
+        class Call(string FN, ARGS...) : BaseCall {
 
-        struct ReportMouse {
-            int[2] pos;
+            this(ARGS args) {
+                this.args = args;
+            }
+
+            ARGS args;
+            override void call(TerminalSession session) immutable {
+                mixin(FN ~ `(args);`);
+            }
         }
 
-        struct Resize {
-            int c;
-            int r;
+        auto makeCall(string FN, ARGS...)(ARGS args) {
+            return cast(immutable)(new Call!(FN, ARGS)(args));
         }
-
-        struct SetPalette {
-            immutable (uint)[] palette;
-        }
-
-        struct SetScroll {
-            int y;
-        }
-
-        struct KeyCode {
-            uint key;
-        }
-
         struct OSCData {
             int cmd;
             string text;
@@ -140,6 +133,14 @@ class Terminal
     int resizedWhen = 0;
     int frameCounter = 0;
 
+    void sessionCall(string FN, ARGS...)(ARGS args) {
+        version(threaded) {
+            send(sessionThread, cast(immutable)(new Call!(FN, ARGS)(args)));
+        } else {
+            mixin(FN ~ `(args);`);
+        }
+    }
+
     void resize(int w = -1, int h = -1)
     {
         if(w != width || h != height)
@@ -158,11 +159,7 @@ class Terminal
         if(cols != this.cols || rows != this.rows) {
             this.cols = cols;
             this.rows = rows;
-            version(threaded) {
-                send(sessionThread, Resize(cols, rows));
-            } else {
-                session.resize(cols, rows);
-            }
+            sessionCall!`session.resize`(cols, rows);
             console.resize(cols, rows);
         }
     }
@@ -178,10 +175,8 @@ class Terminal
         pos[0] = pos[0] + 1;
         pos[1] = pos[1] + 1;
         if(state.mouseReport) {
-            version(threaded) {
-                if(pos[0] > 0 && pos[1] > 0)
-                    send(sessionThread, ReportMouse(pos));
-            }
+            if(pos[0] > 0 && pos[1] > 0)
+                sessionCall!`session.reportMouse`(pos);
         } else {
             if(marking) {
                 console.extendSelection(currentMouse);
@@ -258,17 +253,20 @@ class Terminal
 
     void update()
     {
+        if(activeTerminal == this && !thisActive) {
+            thisActive = true;
+            sessionCall!`session.focus`(true);
+        } else if(activeTerminal != this && thisActive) {
+            thisActive = false;
+            sessionCall!`session.focus`(false);
+        }
+
         version(threaded) {
-            if(activeTerminal == this && !thisActive) {
-                thisActive = true;
-                send(sessionThread, Focus(true));
-            } else if(activeTerminal != this && thisActive) {
-                thisActive = false;
-                send(sessionThread, Focus(false));
-            }
             send(sessionThread, SYNC.init);
         } else {
             session.update();
+            state = session.state;
+            scrollPos = state.scrollPos;
             console.begin();
             auto changes = session.getChanges!Change();
             foreach(c ; changes) renderChange(c);
@@ -291,7 +289,7 @@ class Terminal
                 if(scrollPos > state.scrollTop - rows)
                     scrollPos = state.scrollTop - rows;
                 if(sp != scrollPos)
-                    send(sessionThread, SetScroll(scrollPos));
+                    sessionCall!`session.setScroll`(scrollPos);
             }
             if(key == DK_LEFT_MOUSE_DOWN) {
                 marking = true;
@@ -300,20 +298,18 @@ class Terminal
             } else if(key == DK_LEFT_MOUSE_UP) {
                 marking = false;
                 selection = console.getSelection();
-                writeln("SELECTIOIN ", selection);
                 console.clearSelection();
             }
 
             if((key & KEYCODE) == 0) {
                 if(scrollPos != 0) {
                     scrollPos = 0;
-                    send(sessionThread, SetScroll(scrollPos));
+                    sessionCall!`session.setScroll`(scrollPos);
                 }
             }
 
         }
-        version(threaded) send(sessionThread, KeyCode(key));
-        else session.putKey(key);
+        sessionCall!`session.putKey`(key);
 
     }
 
@@ -325,13 +321,12 @@ class Terminal
     }
 
     void setPalette(immutable uint[] colors) {
-        version(threaded) send(sessionThread, colors);
-        else session.setPalette(colors);
+        sessionCall!`session.setPalette`(colors);
+        console.bgColor = colors[0];
     }
 
     void setPalette(uint[] colors) {
-        version(threaded) send(sessionThread, SetPalette(colors.idup));
-        else session.setPalette(color);
+        sessionCall!`session.setPalette`(colors.idup);
         console.bgColor = colors[0];
     }
 
@@ -371,7 +366,6 @@ version(threaded) {
             }
         });
         try {
-            bool focus = false;
             bool synced = false;
             while(!quit) {
                 if(synced) {
@@ -385,23 +379,15 @@ version(threaded) {
                 }
 
                 // Commands received from main thread
-                receiveTimeout(dur!"msecs"(focus ? 2 : 10),
-                    (Resize a) {
-                        session.resize(a.c, a.r);
-                    },
-                    (Focus f) { focus = f.yes; },
-                    (ReportMouse a) {
-                        session.reportMouse(a.pos);
-                    },
-                    (SetPalette a) {
-                        writeln("PAL");
-                        session.setPalette(a.palette);
+                receiveTimeout(dur!"msecs"(session.focus ? 2 : 10),
+                    (immutable (BaseCall) c) {
+                        c.call(session);
                     },
                     (SYNC _) {
                             if(!synced)
-                            writeln("SYNCED");
+                                writeln("SYNCED");
                             synced = true;
-                            auto changes = session.getChanges!PackedChange();
+                            auto changes = session.getChanges!Change();
                             if(changes.length > 0)
                                 send(parentTid, id, changes);
                     },
@@ -413,12 +399,6 @@ version(threaded) {
                             session.kill();
                         }
                     },
-                    (SetScroll s) {
-                        session.setScroll(s.y);
-                    },
-                    (KeyCode a) {
-                        session.putKey(a.key);
-                    }
                 );
             }
         } catch (Throwable e) {

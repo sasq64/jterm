@@ -5,7 +5,7 @@ ANSIFIER
 [x] Alternate Buffer
     [x] Save and restore data
 [ ] Insert/replace mode
-[ ] Mouse mode
+[x] Mouse mode
     [x] Report as ansi
     [x] Correct mapping to split pane
 [x] Ctrl-space
@@ -17,9 +17,9 @@ ANSIFIER
 
 SCROLLBACK
 
-[ ] Simple scrollback
+[x] Simple scrollback
     [x] Store scrollback in array
-    [ ] Render scrollback with text depending on scroll position
+    [x] Render scrollback with text depending on scroll position
 [ ] Advanded scrollback
 
 EXTENSIONS
@@ -30,7 +30,7 @@ EXTENSIONS
 TERMINAL
 
 [ ] Insert mode cursor
-[ ] Mouse mark text
+[x] Mouse mark text
     [ ] Rectangle overlay rendering
 [x] Mouse resize splits
 [ ] Optimize split area usage
@@ -50,11 +50,15 @@ TERMINAL
     [x] Size console to split area
     [ ] 'Clamp' borders of rendered text to get nice background
 [ ] Scrollbar
-[ ] Fallback font
+[x] Fallback font
 [x] Border for each terminal
 [x] Border should me 'minBorder', count wasted space
 [ ] Make sure alpha is 1.0 in screen
-[ ] Don't recenter console while resizing pane
+[x] Don't recenter console while resizing pane
+[x] Get rid of extra initial resize
+[ ] Scroll page up/down shortcut
+[ ] Equalize panes
+[ ] Blinking cursor
 
 CODE QUALITY
 
@@ -62,18 +66,19 @@ CODE QUALITY
 [x] Do not update on closed session
 [x] Implement and test proper layout node resize
 [x] Break out keycode enums from Window
-[ ] Get rid of extra initial initialization
+[ ] Split up Window class
+[ ] Switch from SDL to GLFW
 
 
 V1 ISSUES
 
 [x] Alt buffer leaks current color
     [ ] Resize fills with current attr, change BEFORE
-[ ] Sync resized buffers
 [x] Tab completion table not rendering bottom line
 [x] zoom=2 on Retina with custom font
-[ ] Cycle font sizes
-    [ ] From current
-    [ ] 'Good' sizes
-[ ] Limit scroll position
+[x] Cycle font sizes
+    [x] From current
+    [x] 'Good' sizes
+[x] Limit scroll position
+[ ] Resizing bug, grow/shrink/grow ?
 

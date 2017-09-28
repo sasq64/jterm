@@ -17,8 +17,7 @@ libs "util" platform="linux"
 mainSourceFile "source/app.d"
 
 configuration "default" {
-versions "threaded" "StdLoggerDisableTrace"
-
+    versions "threaded" "StdLoggerDisableTrace"
 }
 
 configuration "trace" {

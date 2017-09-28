@@ -7,7 +7,9 @@ end
 
 
 setFont("Input-16");
--- setFont("Menlo-16");
+-- setFont("Menlo-16")
+
+setBorder(12)
 
 colors = {
     0x002b36,
