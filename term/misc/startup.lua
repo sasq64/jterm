@@ -1,14 +1,21 @@
 
-function showHelp()
-    writeln 'This is some help'
-end
+bindKey(DK_MIDDLE_MOUSE, paste);
 
--- bind(DK_F1, showHelp)
+bindKey(DK_F3, function()
+    setTermScale(2)
+    setShader([[
+        float m = mod(gl_FragCoord.y, 2.0);
+        gl_FragColor = texture2D(tex, uv) * m * (active / 4.0 + 0.75);
+    ]])
+end)
 
+bindKey(DK_F2, function()
+    setTermScale(1)
+    setShader('gl_FragColor = texture2D(tex, uv) * (active / 4.0 + 0.75);')
+end)
 
-setFont("Input-16");
+setFont("Monospace-16");
 -- setFont("Menlo-16")
-
 setBorder(12)
 
 colors = {

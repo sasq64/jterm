@@ -146,6 +146,17 @@ class Node(PAYLOAD = int)
         layout();
     }
 
+    /* string save() { */
+    /* } */
+
+    /* static Node load(string[] spec) { */
+
+    /*     int[] d = spec[o].split(";").map!int(); */
+    /*     x = d[0]; */
+
+
+    /* } */
+
     /// Remove this node from it's parent
     void remove() {
         static import std.algorithm.mutation;

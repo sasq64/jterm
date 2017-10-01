@@ -97,14 +97,13 @@ class TermOps
         }
     }
 
-        /* lua.registerFunction("setShader", (string b64data) { */
-        /*     try { */
-        /*         auto data = Base64.decode(b64data); */
-        /*         setShader(cast(string)data); */
-        /*     } catch (Exception e) { */
-        /*         writeln("Failed to set shader"); */
-        /*     } */
-        /* }); */
+    @script setShader(string shader) {
+        try {
+            app.setShader(shader);
+        } catch (Exception e) {
+            writeln(e);
+        }
+    }
         /* lua.registerFunction("setBackground", (string b64data) { */
         /*     try { */
         /*         auto data = Base64.decode(b64data); */
@@ -221,6 +220,13 @@ class TermOps
         reorg();
     }
 
+    @script string getLayout()
+    {
+        root.forEach((NODE n) {
+        });
+        return "";
+    }
+
     @script void goUp()
     {
         if(!currentNode) return;
@@ -268,7 +274,7 @@ class TermOps
         resize([sz.x, sz.y]);
     }
 
-    void paste()
+    @script void paste()
     {
         Terminal ct = currentTerm;
         if(ct) {

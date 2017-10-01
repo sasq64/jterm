@@ -6,8 +6,6 @@ import std.range.primitives;
 /// Splits long arrays and tags them as wrapped
 D wrap(alias FN, D, T = ElementType!D, E = ElementType!T)(D data, int w, E fill = E.init)
 {
-    pragma(msg, T.stringof);
-    pragma(msg, E.stringof);
     T[] newData;
     foreach(i ; 0 .. data.length) {
         auto d = data[i];

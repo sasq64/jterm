@@ -19,8 +19,10 @@ T[] del(T)(ref T[] t, int offs, int count, T fill = T.init)
     return t;
 }
 
+import std.range.primitives;
+
 // Rotate the contents of `t` `count` steps to the left.
-T[] rot(T)(T[] t, int count)
+R rot(R, T = ElementType!R)(R t, int count)
 {
     // TODO: Slow, creates temporary array and the copies it
     if(count > 0)
@@ -33,7 +35,7 @@ T[] rot(T)(T[] t, int count)
 
 // Shift contents of `t` `count` steps to the left. Lost items
 // are filled with `fill`.
-T[] shift(T)(T[] t, int count, T fill)
+R shift(R, T = ElementType!R)(R t, int count, T fill)
 {
     rot(t, count);
 

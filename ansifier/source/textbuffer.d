@@ -1,24 +1,22 @@
-
 import std.stdio;
 import std.traits;
 
-
 version(trace) import diesel.minitrace;
 
-static @trusted toImmutable(T)(T c) {
-    return cast(immutable(T))(c);
-}
 @safe class TextBuffer(CHAR, ATTRS)
 {
-	static const int WRAPPED = 1;
+    static const int WRAPPED = 1;
 
-    import std.typecons;
     struct TextLine {
 
         struct Item {
             CHAR c;
             ATTRS a;
         };
+
+        static @trusted toImmutable(T)(T c) {
+            return cast(immutable(T))(c);
+        }
 
         this(immutable Item[] items, int flags = 0) immutable {
             data = items;
@@ -40,11 +38,13 @@ static @trusted toImmutable(T)(T c) {
 
         // Resize line, Filling with c/a if needed
         void resize(int w, CHAR c = ' ', ATTRS a = ATTRS.init) {
-            auto item = Item(c, a);
-            while(data.length < w) {
-                data ~= item;
-            }
+            auto oldw = data.length;
             data.length = w;
+            if(w > oldw) {
+                auto item = Item(c, a);
+                foreach(i ; oldw .. w)
+                    data[i] = item;
+            }
         }
 
         size_t opDollar() const { return data.length; }
@@ -87,24 +87,24 @@ static @trusted toImmutable(T)(T c) {
         }
 
         Item[] data;
-		int flags = 0;
+        int flags = 0;
         alias data this;
 
-		@property bool wrapped() { return (flags & WRAPPED) != 0; }
-		@property void wrapped(bool on) {
-			if(on) flags |= WRAPPED;
-			else flags &= ~WRAPPED;
-		}
+        @property bool wrapped() { return (flags & WRAPPED) != 0; }
+        @property void wrapped(bool on) {
+            if(on) flags |= WRAPPED;
+            else flags &= ~WRAPPED;
+        }
     };
 
     ATTRS attrs;
 
     int _width = 0;
     int _height = 0;
-	void width(int w) { _width = w; }
-	int width() inout { return _width; }
-	void height(int h) { _height = h; }
-	int height() inout { return _height; }
+    void width(int w) { _width = w; }
+    int width() inout { return _width; }
+    void height(int h) { _height = h; }
+    int height() inout { return _height; }
 
     // Entire buffer. Actually allocated
     protected TextLine[] allLines;
@@ -130,7 +130,7 @@ static @trusted toImmutable(T)(T c) {
 
     this(int w, int h)
     {
-		allLines = new TextLine[1000];
+        allLines = new TextLine[1000];
         screen = allLines[$-h .. $];
         resize(w, h);
     }
@@ -152,6 +152,8 @@ static @trusted toImmutable(T)(T c) {
         lastData[] = TextLine(w,0);
 
         screen = allLines[$-h .. $];
+        //screen.set(allLines, h, allLines.length-h);
+
         scrollOffset = 0;
 
     }
@@ -188,37 +190,39 @@ static @trusted toImmutable(T)(T c) {
     {
         version(trace) auto _st = ScopedTrace();
 
-        int sy = 0;
-
         CHANGE[] textChanges;
 
         TextLine[] view = screen;
         if(scrollOffset != 0)
             view = allLines[$ - height - scrollOffset .. $ - scrollOffset];
 
-        foreach(y ; sy .. sy + height) {
+        CHAR[4096] buf;
+
+        foreach(int y, ref v ; view[0 .. height]) {
             auto x = 0;
             while(true) {
                 // Skip over characters that has not changed
-                while(x < width && view[y][x] == lastData[y][x]) x++;
+                while(x < width && v[x] == lastData[y][x]) x++;
 
                 if(x == width)
                     break;
 
                 // Record start of changed text
-                auto a = view[y][x].a;
+                auto a = v[x].a;
+                buf[0] = v[x].c;
                 auto start = x++;
 
-
                 // Iterate over changes, building the string
-                while(x < width && view[y][x] != lastData[y][x] && view[y][x].a == a) {
+                while(x < width && v[x] != lastData[y][x] && v[x].a == a) {
+                    buf[x - start] = v[x].c;
                     x++;
                 }
 
-                auto dl = view[y][start .. x].getString();
+                auto dl = buf[0 .. x - start].idup;
                 textChanges ~= CHANGE(dl, start+1, y+1, a);
             }
-            lastData[y] = view[y].dup;
+            lastData[y] = v.dup;
+            y++;
         }
 
         return textChanges;
@@ -258,7 +262,7 @@ unittest {
     text.put(1, 1, "12345678");
     text.put(1, 2, "abcd");
     text.put(1, 3, "XYXYXYXYX");
-    text.screen[0].flags = text.WRAPPED;
+    text.screen[0].wrapped = true;
     writeln(text.screen);
     assert(text.screen[0] == "12345678"d);
     lines = text.join(text.screen);
@@ -267,7 +271,6 @@ unittest {
     assert(lines[0].length == 12);
 
     text.resize(10,4);
-
 
     lines = text.wrap(lines);
     writeln(lines);

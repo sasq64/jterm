@@ -10,6 +10,7 @@ import core.time : Duration, dur;
 import std.experimental.logger;
 import diesel.gl.font;
 import diesel.gl.core : scaleColor;
+import diesel.gl.window;
 import diesel.gl.program;
 import diesel.gl.drawable;
 version(trace) import diesel.minitrace;
@@ -37,6 +38,7 @@ class Terminal
 {
     TermState state;
     Font font;
+    Window win;
     int zoom = 1;
 
     int cols;
@@ -45,9 +47,9 @@ class Terminal
     int width;
     int height;
 
-    int cursorShape = 0;
-    int cursorX = -1;
-    int cursorY = -1;
+    //int cursorShape = 0;
+    //int cursorX = -1;
+    //int cursorY = -1;
     Console console;
     bool hasQuit = false;
     PtyFile tty;
@@ -57,12 +59,19 @@ class Terminal
     bool thisActive = false;
 
     static Terminal[] terminals;
-    static Terminal get(int n) { return terminals[n]; }
-    static ulong length() { return terminals.length; }
+    //static Terminal get(int n) { return terminals[n]; }
+    //static ulong length() { return terminals.length; }
 
     bool marking = false;
 
     int scrollPos = 0;
+
+    int[2] currentMouse;
+    int[2] lastPos;
+    int border = 0;
+    int resizedWhen = 0;
+    int frameCounter = 0;
+
 
     version(threaded)
     {
@@ -129,10 +138,6 @@ class Terminal
         console.font = font;
     }
 
-    int border = 0;
-    int resizedWhen = 0;
-    int frameCounter = 0;
-
     void sessionCall(string FN, ARGS...)(ARGS args) {
         version(threaded) {
             send(sessionThread, cast(immutable)(new Call!(FN, ARGS)(args)));
@@ -164,19 +169,22 @@ class Terminal
         }
     }
 
-    int[2] currentMouse;
-
     void reportMouse(int[2] pos)
     {
         pos[0] = pos[0] - (width - console.width * zoom) /2;
         pos[1] = pos[1] - (height - console.height * zoom) /2;
         pos[] = pos[] / (font.size[] * zoom);
+        if(pos[0] <= 0) pos[0] = 0;
+        if(pos[1] <= 0) pos[1] = 0;
+        if(pos[0] >= cols) pos[0] = cols-1;
+        if(pos[1] >= rows) pos[1] = rows-1;
         currentMouse = pos;
         pos[0] = pos[0] + 1;
         pos[1] = pos[1] + 1;
         if(state.mouseReport) {
-            if(pos[0] > 0 && pos[1] > 0)
+            if(lastPos != pos && pos[0] > 0 && pos[1] > 0)
                 sessionCall!`session.reportMouse`(pos);
+            lastPos = pos;
         } else {
             if(marking) {
                 console.extendSelection(currentMouse);
@@ -191,9 +199,11 @@ class Terminal
         prg.setUniform("active", activeTerminal == this ? 1.0 : 0.0);
         int[2] xyb;
         if(frameCounter > resizedWhen + 8)
+            // Center the console inside the area
             xyb = xy[] + [ (width - console.width * zoom) / 2,
                            (height - console.height * zoom) / 2];
         else
+            // Avoid centering during resize since it looks jerky
             xyb = xy[] + [border * zoom, border * zoom];
         renderRectangle(xyb, sz, prg);
 
@@ -274,8 +284,6 @@ class Terminal
         }
     }
 
-    string selection = null;
-
     void putKey(const uint key)
     {
         if(!state.mouseReport) {
@@ -296,9 +304,12 @@ class Terminal
                 console.clearSelection();
                 console.startSelection(currentMouse);
             } else if(key == DK_LEFT_MOUSE_UP) {
-                marking = false;
-                selection = console.getSelection();
-                console.clearSelection();
+                if(marking) {
+                    marking = false;
+                    auto selection = console.getSelection();
+                    win.putClipboard(selection);
+                    console.clearSelection();
+                }
             }
 
             if((key & KEYCODE) == 0) {
@@ -311,13 +322,6 @@ class Terminal
         }
         sessionCall!`session.putKey`(key);
 
-    }
-
-    bool haveSelection() { return selection != null; }
-    string popSelection() {
-        auto rc = selection;
-        selection = null;
-        return rc;
     }
 
     void setPalette(immutable uint[] colors) {
@@ -415,12 +419,15 @@ version(threaded) {
 }
 
 
-    this(Font font, int w, int h, int zoom, string cmd, string[] args = [])
+    this(Font font, int w, int h, Window win, int zoom, int border, string cmd, string[] args = [])
     {
+        this.win = win;
         this.font = font;
         this.zoom = zoom;
-        cols = w / font.size.x / zoom;
-        rows = h / font.size.y / zoom;
+        this.border = border;
+
+        cols = (w / zoom - border*2) / font.size.x;
+        rows = (h / zoom - border*2) / font.size.y;
         width = w;
         height = h;
 

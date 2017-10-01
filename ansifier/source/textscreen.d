@@ -125,7 +125,7 @@ alias CHAR = wchar;
 
         if(!usingAlt) {
 
-			auto len = allLines.length;
+            auto len = allLines.length;
             auto lines = allLines;
 
             // Mark cursor location
@@ -165,12 +165,12 @@ alias CHAR = wchar;
             lines = wrap!((auto ref a, bool w) => a.wrapped = w)(lines, w, TextLine.Item(' ', attrs));
 
             // Add or remove lines to get back to same number of lines
-			while(lines.length > len)
-				lines = lines[1 .. $];
+            while(lines.length > len)
+                lines = lines[1 .. $];
 
             auto empty = TextLine(w, ' ', attrs);
-			while(lines.length < len)
-				lines = empty ~ lines;
+            while(lines.length < len)
+                lines = empty ~ lines;
 
             foreach(i, l ; lines)
                 if(l != empty) {
@@ -181,6 +181,7 @@ alias CHAR = wchar;
 
             allLines = lines;
             screen = allLines[$ - h .. $];
+            //screen.set(allLines, h, allLines.length - h);
 
             // Locate cursor again to set position
             foreach(int yy, ref line ; screen) {
@@ -199,6 +200,7 @@ alias CHAR = wchar;
             // In ALT buffer mode, just resize
             altData.length = h;
             screen = altData;
+            //screen.set(altData);
             foreach(ref d ; screen) {
                 d.resize(w, ' ', attrs);
             }
@@ -334,14 +336,14 @@ alias CHAR = wchar;
     {
         didChange = true;
         //debug writefln("scroll %d in %d .. %d", dy, scrollTop, height);
-		if(!usingAlt) {
+        if(!usingAlt) {
             // TODO: Use scrollTop
             scrollBackTop += dy;
             if(scrollBackTop >= allLines.length)
                 scrollBackTop = cast(int)allLines.length - 1;
-			shift(allLines[0 .. $ - (height - scrollBottom)], dy, makeEmpty());
-		} else
-			shift(altData[scrollTop -1 .. scrollBottom], dy, makeEmpty());
+            shift(allLines[0 .. $ - (height - scrollBottom)], dy, makeEmpty());
+        } else
+            shift(altData[scrollTop -1 .. scrollBottom], dy, makeEmpty());
     }
 
     void write(T)(const T[] text, bool wrap)

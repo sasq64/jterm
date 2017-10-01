@@ -80,32 +80,16 @@ class TermApp
         setShader(q{
             gl_FragColor = texture2D(tex, uv) * (active / 4.0 + 0.75);
         });
-
-        auto fs_scanline = q{  // Fragment shader
-            uniform sampler2D tex;
-            varying vec2 uv;
-            uniform int frameCounter;
-            void main(void) {
-                float my = mod(gl_FragCoord.y, 2.0);
-                float mx = mod(gl_FragCoord.x + 1.0, 2.0);
-                float mz = mod(gl_FragCoord.x + gl_FragCoord.y, 2.0);
-                vec4 c = texture2D(tex, uv);
-                gl_FragColor = vec4(c.x * mx, c.y * my, c.z * mz, c.a);
-            }
-        };
-        //progScanlines = Program(vs, fs_scanline);
     }
 
     // Set the pixel shader for rendering the terminal areas.
     // 'shader' goes inside main() and must write to gl_FragColor
-    // Available variables/uniforms:
-    // uv - The UV coordinate
-    // tex - The texture sampler
-    // active = 1 or 0
-    // frameCounter - Uniform that increases each frame
     // Default: "gl_FragColor = texture2D(tex, uv);"
     void setShader(string shader)
     {
+        writeln("SETTING SHADER\n", shader);
+
+        // Available uniforms
         auto prefix = q{
             uniform sampler2D tex;
             varying vec2 uv;
@@ -116,12 +100,17 @@ class TermApp
             prefix ~ "void main(void) {\n" ~ shader ~ "\n}\n"
         );
         progNormal = p;
+        if(root)
+            root.forEach((NODE n) {
+                auto terminal = n.payload;
+                if(terminal) {
+                    terminal.prg = progNormal;
+                }
+            });
     }
 
     void initLua()
     {
-        import std.base64;
-        import imageformats;
         try {
             lua = new LuaInterpreter();
         } catch(Exception e) {
@@ -245,9 +234,8 @@ class TermApp
 
     void newTerm(NODE node)
     {
-        node.payload = new Terminal(font.dup(), node.w, node.h, zoom, cmd, args);
+        node.payload = new Terminal(font.dup(), node.w, node.h, win, zoom, border, cmd, args);
         node.payload.prg = progNormal;
-        node.payload.border = border;
         node.payload.start();
         if(defaultPalette.length > 0)
             node.payload.setPalette(defaultPalette);
@@ -278,8 +266,8 @@ class TermApp
         if(key & DKM_CMD) {
             int code = (key & 0xff_ff_ff);
             int no = code - 0x31;
-            if(no >= 0 && no < Terminal.length)
-                currentTerm = Terminal.get(no);
+            if(no >= 0 && no < Terminal.terminals.length)
+                currentTerm = Terminal.terminals[no];
             else if(code == 'b') {
 
             }
@@ -364,10 +352,6 @@ class TermApp
             while(key) {
                 handleKey(key, pos);
                 key = win.getKey();
-            }
-
-            if(currentTerm && currentTerm.haveSelection()) {
-                win.putClipboard(currentTerm.popSelection());
             }
 
             win.setTarget();

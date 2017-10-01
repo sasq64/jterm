@@ -3,7 +3,7 @@
 T toArray(T, S)(S s) if(is(T == char**))
 {
     import core.stdc.stdlib;
-	char** argv = cast(char**) malloc((char*).sizeof * (s.length + 1));
+    char** argv = cast(char**) malloc((char*).sizeof * (s.length + 1));
     foreach(i, arg; s) {
         argv[i] = cast(char*) malloc(arg.length + 1);
         argv[i][0 .. arg.length] = arg[];
@@ -46,10 +46,10 @@ extern(C) pid_t forkpty(int *amaster, char *name, termios *termp, winsize *winp)
 
 struct winsize
 {
-  ushort ws_row;	/* rows, in characters */
-  ushort ws_col;	/* columns, in characters */
-  ushort ws_xpixel;	/* horizontal size, pixels */
-  ushort ws_ypixel;	/* vertical size, pixels */
+  ushort ws_row;    /* rows, in characters */
+  ushort ws_col;    /* columns, in characters */
+  ushort ws_xpixel; /* horizontal size, pixels */
+  ushort ws_ypixel; /* vertical size, pixels */
 };
 
 const int PENDIN =  0x20000000;
@@ -159,11 +159,11 @@ PtyFile launch(string[] args, int cols, int rows)
 
     if(rc == 0) {
         // In child process
-			import core.stdc.stdlib;
+            import core.stdc.stdlib;
             setenv("TERM", "xterm-256color", 1);
-			//setenv("LANG", "en_US.UTF-8", 1);
+            //setenv("LANG", "en_US.UTF-8", 1);
             auto argv = toArray!(char**)(args);
-			core.sys.posix.unistd.execv(argv[0], argv);
+            core.sys.posix.unistd.execv(argv[0], argv);
             assert(false);
     } else if(rc < 0)
         writeln("LAUNCH FAILED");
@@ -217,13 +217,13 @@ alias ssize_t = int;
 
 @trusted void signal_winsize(PtyFile f, ushort cols, ushort rows)
 {
-	// TODO send WINSIZE signals
+    // TODO send WINSIZE signals
 }
 
 PtyFile launch(string[] args, int cols, int rows)
 {
-	//TODO Launch executable and read/write stdin/out (forkpty on posix)
-	return PtyFile(0, 0);
+    //TODO Launch executable and read/write stdin/out (forkpty on posix)
+    return PtyFile(0, 0);
 }
 
 }
