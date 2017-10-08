@@ -7,7 +7,17 @@ struct WrappedSlice(T) {
     size_t length;
     sizediff_t index = 0;
     bool wraps;
-    private T[] backing;
+    T[] backing;
+
+    invariant {
+       // assert(backing.length == 0 || backing.length == 100);
+    }
+
+
+    bool opEquals(WrappedSlice!T other) {
+        return (other.offset == offset && other.length == length &&
+                &other.backing[0] == &backing[0] && backing.length == other.backing.length);
+    }
 
     // Create a view of length 'length' from offset 'offs' into the given slice
     this(T[] b, sizediff_t length = -1, sizediff_t off = 0) {
@@ -27,22 +37,6 @@ struct WrappedSlice(T) {
         return backing[(offset+i) % backing.length];
     }
 
-
-    bool empty() const @property
-    {
-        return index == length;
-    }
-
-    void popFront()
-    {
-        index++;
-    }
-
-    T front() @property
-    {
-        return at(index);
-    }
-
     T[] flatten() {
         if(!wraps)
             return backing[offset .. offset + length];
@@ -58,25 +52,25 @@ struct WrappedSlice(T) {
 
     // Move the offset
     void opOpAssign(string T : "+")(size_t o) {
-        offset = (offset + o) % backing.length;
-        wraps = offset + length > backing.length;
+        offset += o;
+        wraps = (offset % backing.length) + length > backing.length;
     }
 
     // this[] = other[]
     void opIndexAssign(WrappedSlice!T other) {
         assert(length == other.length);
         if(!wraps && !other.wraps) {
-            this = other;
+            backing[] = other.backing[];
+            offset = other.offset;
+            length = other.length;
         } else {
         for(int i=0; i<this.length; i++)
             at(i) = other[i];
         }
     }
 
-    void opAssign(X)(X other) if(isInputRange!X) {
-        int i;
-        foreach(o ; other)
-            at(i++) = o;
+    void opAssign(WrappedSlice!T other) {
+        set(other.backing, other.length, other.offset);
     }
 
     void opIndexAssign(T t, ulong i) {
@@ -94,8 +88,8 @@ struct WrappedSlice(T) {
 
     size_t opDollar() { return length; }
 
-    WrappedSlice!T opSlice() {
-        return WrappedSlice(backing, length, offset);
+    View opSlice() {
+        return View(this);
     }
 
     string toString() {
@@ -103,7 +97,17 @@ struct WrappedSlice(T) {
         return to!string(flatten);
     }
 
-    alias flatten this;
+    //alias flatten this;
+
+    // Range interface
+    struct View {
+        private WrappedSlice ws;
+        private size_t index = 0;
+
+        bool empty() const @property { return index == ws.length; }
+        void popFront() { index++; }
+        ref T front() @property { return ws.at(index); }
+    }
 
 }
 
