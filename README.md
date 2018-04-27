@@ -4,6 +4,8 @@ A Terminal Emulator written in D, using OpenGL ES 2.0 as a rendering back end.
 
 Works on Linux, OSX, Raspberry PI
 
+[![YOUTUBE LINK](http://img.youtube.com/vi/UYLuln2GpEo/0.jpg)](http://www.youtube.com/watch?v=UYLuln2GpEo)
+
 ## Building
 
 Make sure you have _LDC_ (The LLVM D Compiler), _Dub_ (The D build tool),
